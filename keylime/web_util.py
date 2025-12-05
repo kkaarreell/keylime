@@ -106,7 +106,9 @@ def init_tls_dir(component: str, logger: Optional[Logger] = None) -> str:
             server_key_pw = config.get(component, "server_key_password")
             if server_key_pw:
                 server_key_pw = str(server_key_pw)
-            ca_util.cmd_mkcert(tls_dir, "server", password=server_key_pw)
+            # Get the IP address for the certificate from the component configuration
+            ip_address = config.get(component, "ip")
+            ca_util.cmd_mkcert(tls_dir, "server", password=server_key_pw, ip_address=ip_address)
 
         # For the verifier, generate client key and certificate if not present
         if component == "verifier":
@@ -121,7 +123,9 @@ def init_tls_dir(component: str, logger: Optional[Logger] = None) -> str:
                 client_key_pw = config.get(component, "client_key_password")
                 if client_key_pw:
                     client_key_pw = str(client_key_pw)
-                ca_util.cmd_mkcert(tls_dir, "client", password=client_key_pw)
+                # Get the IP address for the certificate from the component configuration
+                ip_address = config.get(component, "ip")
+                ca_util.cmd_mkcert(tls_dir, "client", password=client_key_pw, ip_address=ip_address)
 
     elif tls_dir == "default":
         # Use the keys/certificates generated for the verifier

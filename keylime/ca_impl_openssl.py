@@ -1,4 +1,5 @@
 import datetime
+import ipaddress
 from typing import List, Optional, Tuple
 
 from cryptography import x509
@@ -140,7 +141,7 @@ def mk_cacert(name: Optional[str] = None) -> Tuple[Certificate, RSAPrivateKey, R
 
 
 def mk_signed_cert(
-    cacert: Certificate, ca_privkey: CERTIFICATE_PRIVATE_KEY_TYPES, name: str, serialnum: int
+    cacert: Certificate, ca_privkey: CERTIFICATE_PRIVATE_KEY_TYPES, name: str, serialnum: int, ip_address: Optional[str] = None
 ) -> Tuple[Certificate, RSAPrivateKey]:
     """
     Create a CA cert + server cert + server private key.
@@ -155,6 +156,21 @@ def mk_signed_cert(
     cert_req = cert_req.issuer_name(cacert.issuer)
 
     # Extensions.
+    # Build Subject Alternative Name list
+    # When an IP address is provided, use it instead of the generic name
+    # (since 'server'/'client' are role identifiers, not actual hostnames)
+    san_list = []
+    if ip_address:
+        try:
+            # Parse the IP address and add it to the SAN list
+            san_list.append(x509.IPAddress(ipaddress.ip_address(ip_address)))
+        except ValueError:
+            # If the IP address is invalid, fall back to using the name
+            san_list.append(x509.DNSName(name))
+    else:
+        # No IP address provided, use the name for backward compatibility
+        san_list.append(x509.DNSName(name))
+
     extensions = [
         # OID 2.16.840.1.113730.1.13 is Netscape Comment.
         # http://oid-info.com/get/2.16.840.1.113730.1.13
@@ -163,7 +179,7 @@ def mk_signed_cert(
             value=b"SSL Server",
         ),
         # Subject Alternative Name.
-        x509.SubjectAlternativeName([x509.DNSName(name)]),
+        x509.SubjectAlternativeName(san_list),
         # CRL Distribution Points.
         x509.CRLDistributionPoints(
             [

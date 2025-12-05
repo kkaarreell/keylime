@@ -90,7 +90,7 @@ def ask_password(key_store_pw: Optional[str] = None) -> None:
     global_password = key_store_pw
 
 
-def cmd_mkcert(workingdir: str, name: str, password: Optional[str] = None) -> None:
+def cmd_mkcert(workingdir: str, name: str, password: Optional[str] = None, ip_address: Optional[str] = None) -> None:
     cwd = os.getcwd()
     mask = os.umask(0o037)
     try:
@@ -105,7 +105,7 @@ def cmd_mkcert(workingdir: str, name: str, password: Optional[str] = None) -> No
                 f"Private key of type {type(ca_pk).__name__} cannot be used for creating an x509 certificate"
             )
 
-        cert, pk = ca_impl.mk_signed_cert(cacert, ca_pk, name, priv[0]["lastserial"] + 1)
+        cert, pk = ca_impl.mk_signed_cert(cacert, ca_pk, name, priv[0]["lastserial"] + 1, ip_address=ip_address)
 
         with os.fdopen(os.open(f"{name}-cert.crt", os.O_WRONLY | os.O_CREAT, 0o640), "wb") as f:
             f.write(cert.public_bytes(serialization.Encoding.PEM))
