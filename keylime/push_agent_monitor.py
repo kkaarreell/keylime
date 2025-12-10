@@ -28,7 +28,7 @@ logger = keylime_logging.init_logging("push_agent_monitor")
 # Timeout multiplier for quote_interval
 # We wait 2x the quote_interval before marking an agent as failed
 # This allows for network delays and processing time
-_TIMEOUT_MULTIPLIER = 2.0
+_TIMEOUT_MULTIPLIER = 5.0
 
 # In-memory map of agent_id -> timeout handle for active timeouts
 # This allows us to cancel/reschedule timeouts without database queries
