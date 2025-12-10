@@ -23,6 +23,7 @@ from sqlalchemy.orm.exc import NoResultFound  # pyright: ignore
 
 from keylime import api_version as keylime_api_version
 from keylime import (
+    agent_util,
     cloud_verifier_common,
     config,
     json,
@@ -490,6 +491,13 @@ class AgentsHandler(BaseHandler):
                     logger.error("SQLAlchemy Error for agent ID %s: %s", agent_id, e)
 
                 if agent is not None:
+                    # For push-mode agents, manually load latest attestation so process_get_status()
+                    # can check the evaluation field and return correct status immediately after failures
+                    if agent_util.is_push_mode_agent(agent):
+                        latest_attestation = Attestation.get_latest(agent_id)
+                        # Dynamically attach it to the VerfierMain instance for process_get_status()
+                        agent.latest_attestation = latest_attestation  # type: ignore[attr-defined]
+
                     response = cloud_verifier_common.process_get_status(agent)
                     web_util.echo_json_response(self.req_handler, 200, "Success", response)
                 else:

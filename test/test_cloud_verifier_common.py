@@ -798,8 +798,14 @@ class TestProcessGetStatus(unittest.TestCase):
         port=None,
         accept_attestations=True,
         attestation_count=0,
+        latest_attestation_evaluation=None,
     ):
-        """Helper to create a mock agent with specified attributes."""
+        """Helper to create a mock agent with specified attributes.
+
+        Args:
+            latest_attestation_evaluation: If not None, creates a mock latest_attestation
+                with this evaluation status ("pass", "fail", or "pending")
+        """
         agent = MagicMock(spec=VerfierMain)
         agent.operational_state = operational_state
         agent.ip = ip
@@ -826,6 +832,15 @@ class TestProcessGetStatus(unittest.TestCase):
         agent.verifier_port = 8881
         agent.severity_level = None
         agent.last_event_id = None
+
+        # Mock latest_attestation if evaluation is provided
+        if latest_attestation_evaluation is not None:
+            mock_attestation = MagicMock()
+            mock_attestation.evaluation = latest_attestation_evaluation
+            agent.latest_attestation = mock_attestation
+        else:
+            agent.latest_attestation = None
+
         return agent
 
     def test_push_mode_agent_pending_before_first_attestation(self):
@@ -851,27 +866,77 @@ class TestProcessGetStatus(unittest.TestCase):
 
     def test_push_mode_agent_pass_after_attestation(self):
         """Test PUSH mode agent shows PASS after successful attestation."""
-        # Create PUSH mode agent with attestation_count > 0
+        # Create PUSH mode agent with attestation_count > 0 and latest attestation passed
         agent = self._create_mock_agent(
             operational_state=states.GET_QUOTE,
             ip=None,
             port=None,
             accept_attestations=True,
             attestation_count=1,  # Has attested
+            latest_attestation_evaluation="pass",  # Latest attestation passed
         )
 
         status = cloud_verifier_common.process_get_status(agent)
 
-        # Should be PASS because agent has attested and accept_attestations=True
+        # Should be PASS because latest attestation passed
         self.assertEqual(
             status["attestation_status"],
             "PASS",
-            "PUSH mode agent should show PASS after successful attestation",
+            "PUSH mode agent should show PASS when latest attestation passed",
+        )
+
+    def test_push_mode_agent_fail_when_latest_attestation_failed(self):
+        """Test PUSH mode agent shows FAIL when latest attestation failed.
+
+        This tests the bug scenario where attestations are failing but accept_attestations
+        is still True (waiting for timeout). The status should immediately show FAIL based
+        on the latest attestation evaluation, not wait for the timeout.
+        """
+        # Create PUSH mode agent where latest attestation failed
+        # but accept_attestations is still True (timeout hasn't fired yet)
+        agent = self._create_mock_agent(
+            operational_state=states.GET_QUOTE,
+            ip=None,
+            port=None,
+            accept_attestations=True,  # Still accepting (timeout not fired)
+            attestation_count=1,  # Had successful attestations before
+            latest_attestation_evaluation="fail",  # But latest one failed
+        )
+
+        status = cloud_verifier_common.process_get_status(agent)
+
+        # Should be FAIL because latest attestation failed
+        self.assertEqual(
+            status["attestation_status"],
+            "FAIL",
+            "PUSH mode agent should show FAIL when latest attestation failed, "
+            "even if accept_attestations is still True",
+        )
+
+    def test_push_mode_agent_pending_when_attestation_evaluating(self):
+        """Test PUSH mode agent shows PENDING when latest attestation is being evaluated."""
+        # Create PUSH mode agent where latest attestation is still being evaluated
+        agent = self._create_mock_agent(
+            operational_state=states.GET_QUOTE,
+            ip=None,
+            port=None,
+            accept_attestations=True,
+            attestation_count=1,
+            latest_attestation_evaluation="pending",  # Still evaluating
+        )
+
+        status = cloud_verifier_common.process_get_status(agent)
+
+        # Should be PENDING because attestation is still being evaluated
+        self.assertEqual(
+            status["attestation_status"],
+            "PENDING",
+            "PUSH mode agent should show PENDING when latest attestation is being evaluated",
         )
 
     def test_push_mode_agent_fail_when_not_accepting(self):
         """Test PUSH mode agent shows FAIL when accept_attestations=False."""
-        # Create PUSH mode agent with accept_attestations=False
+        # Create PUSH mode agent with accept_attestations=False (timed out)
         agent = self._create_mock_agent(
             operational_state=states.GET_QUOTE,
             ip=None,

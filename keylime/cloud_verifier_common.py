@@ -274,18 +274,45 @@ def process_get_status(agent: VerfierMain) -> Dict[str, Any]:
     attestation_status = "PENDING"
 
     if agent_util.is_push_mode_agent(agent):
-        # PUSH mode: determine status based on accept_attestations flag and attestation history
-        # Agent must have successfully attested at least once to show PASS
-        if hasattr(agent, "accept_attestations") and agent.accept_attestations is True:
-            # Only show PASS if agent has successfully attested at least once
-            # Use explicit type-safe comparison for attestation_count to satisfy type checkers
-            attestation_count_value = getattr(agent, "attestation_count", None)
-            if attestation_count_value is not None and attestation_count_value > 0:
-                attestation_status = "PASS"
-            else:
-                attestation_status = "PENDING"
-        elif hasattr(agent, "accept_attestations") and agent.accept_attestations is False:
+        # PUSH mode: determine status based on accept_attestations flag and latest attestation result
+        # This logic ensures that recent attestation failures are immediately reflected in the status,
+        # even before the timeout monitor marks the agent as failed
+
+        # First check if attestations are disabled (timeout or explicit failure)
+        if hasattr(agent, "accept_attestations") and agent.accept_attestations is False:
             attestation_status = "FAIL"
+        elif hasattr(agent, "accept_attestations") and agent.accept_attestations is True:
+            # Check the evaluation result of the latest attestation
+            # Import here to avoid circular dependency
+            from keylime.models.verifier import VerifierAgent  # pylint: disable=import-outside-toplevel
+
+            # Get latest attestation if agent is a VerifierAgent model instance
+            latest_attestation = None
+            if isinstance(agent, VerifierAgent):
+                latest_attestation = agent.latest_attestation
+            elif hasattr(agent, "latest_attestation"):
+                latest_attestation = agent.latest_attestation
+
+            # Determine status based on latest attestation evaluation
+            if latest_attestation:
+                if latest_attestation.evaluation == "fail":
+                    # Latest attestation failed - show FAIL immediately
+                    attestation_status = "FAIL"
+                elif latest_attestation.evaluation == "pass":
+                    # Latest attestation passed - show PASS
+                    attestation_status = "PASS"
+                else:
+                    # Latest attestation is still pending evaluation
+                    attestation_status = "PENDING"
+            else:
+                # No attestations yet - check if at least one successful attestation occurred
+                attestation_count_value = getattr(agent, "attestation_count", None)
+                if attestation_count_value is not None and attestation_count_value > 0:
+                    # Had successful attestations in the past but no current attestation record
+                    attestation_status = "PASS"
+                else:
+                    # Never successfully attested
+                    attestation_status = "PENDING"
         else:
             attestation_status = "PENDING"
     else:
