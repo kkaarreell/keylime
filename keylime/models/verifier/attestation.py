@@ -85,7 +85,15 @@ class Attestation(PersistableModel):
         if not self.capabilities_received_at and any(item.capabilities for item in self.evidence):
             self.capabilities_received_at = now
 
-        if any(item.chosen_parameters and item.chosen_parameters.changes.get("challenge") for item in self.evidence):
+        # Lazy import to avoid circular dependency
+        from keylime.models.verifier.evidence import CertificationParameters  # pylint: disable=import-outside-toplevel
+
+        if any(
+            item.chosen_parameters
+            and isinstance(item.chosen_parameters, CertificationParameters)
+            and item.chosen_parameters.challenge
+            for item in self.evidence
+        ):
             challenge_lifetime = config.getint("verifier", "challenge_lifetime", fallback=1800)
             self.challenges_expire_at = self.capabilities_received_at + timedelta(seconds=challenge_lifetime)
 
