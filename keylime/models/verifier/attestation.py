@@ -88,6 +88,21 @@ class Attestation(PersistableModel):
         # Lazy import to avoid circular dependency
         from keylime.models.verifier.evidence import CertificationParameters  # pylint: disable=import-outside-toplevel
 
+        # Debug logging to understand why challenges_expire_at is not being set
+        logger.debug("_set_timestamps called for attestation %s/%s", self.agent_id, self.index)
+        logger.debug("Evidence items count: %d", len(self.evidence))
+        for i, item in enumerate(self.evidence):
+            logger.debug(
+                "Evidence[%d]: class=%s, type=%s, chosen_parameters=%s, is_CertificationParameters=%s",
+                i,
+                item.evidence_class,
+                item.evidence_type,
+                item.chosen_parameters,
+                isinstance(item.chosen_parameters, CertificationParameters) if item.chosen_parameters else None,
+            )
+            if item.chosen_parameters and isinstance(item.chosen_parameters, CertificationParameters):
+                logger.debug("  -> challenge=%s (type=%s)", item.chosen_parameters.challenge, type(item.chosen_parameters.challenge))
+
         if any(
             item.chosen_parameters
             and isinstance(item.chosen_parameters, CertificationParameters)
@@ -96,6 +111,9 @@ class Attestation(PersistableModel):
         ):
             challenge_lifetime = config.getint("verifier", "challenge_lifetime", fallback=1800)
             self.challenges_expire_at = self.capabilities_received_at + timedelta(seconds=challenge_lifetime)
+            logger.debug("Set challenges_expire_at to %s", self.challenges_expire_at)
+        else:
+            logger.debug("Did NOT set challenges_expire_at (condition failed)")
 
         if any(item.data and item.data.changes for item in self.evidence):
             self.evidence_received_at = now
@@ -114,6 +132,7 @@ class Attestation(PersistableModel):
         # TODO: Set verification_completed_at
 
     def refresh_metadata(self):
+        logger.debug("DEBUG: refresh_metadata() called for attestation %s/%s", self.agent_id, self.index)
         self._set_stage()
         self._set_timestamps()
 
