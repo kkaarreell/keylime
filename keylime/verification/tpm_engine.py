@@ -895,6 +895,8 @@ class TPMEngine(VerificationEngine):
 
     @property
     def uefi_ref_state(self) -> Any:
+        if self.agent.mb_policy is None:
+            return None
         return self.agent.mb_policy.mb_policy
 
     @property
@@ -921,6 +923,8 @@ class TPMEngine(VerificationEngine):
                     # Parse the JSON policy stored in the database
                     return json.loads(result[0])
 
+        if self.agent.ima_policy is None:
+            return None
         return self.agent.ima_policy.ima_policy
 
     @property
