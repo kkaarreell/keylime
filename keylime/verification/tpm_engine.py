@@ -933,6 +933,17 @@ class TPMEngine(VerificationEngine):
         pcrs = {int(num) for num, allowed_vals in tpm_policy.items() if num.isdigit() and allowed_vals} if tpm_policy else set()
         logger.debug("DEBUG: PCRs from tpm_policy=%s", pcrs)
 
+        # If no numbered PCR keys are present but a mask is, extract PCRs from the mask
+        # This handles the case where tenant provides mask-only policies (legacy behavior)
+        if not pcrs and tpm_policy and "mask" in tpm_policy:
+            mask_str = tpm_policy["mask"]
+            if mask_str and tpm_util.check_mask(mask_str, config.IMA_PCR):
+                pcrs.add(config.IMA_PCR)
+            for measuredboot_pcr in config.MEASUREDBOOT_PCRS:
+                if mask_str and tpm_util.check_mask(mask_str, measuredboot_pcr):
+                    pcrs.add(measuredboot_pcr)
+            logger.debug("DEBUG: PCRs extracted from mask: %s", pcrs)
+
         # Add UEFI log PCRs
         if self.expects_uefi_log:
             pcrs.update(config.MEASUREDBOOT_PCRS)
