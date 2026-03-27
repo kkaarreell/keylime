@@ -100,5 +100,13 @@ class VerifierAgent(PersistableModel):
         # the cache holds strong references to every VerifierAgent instance.
         # Lazy import to avoid circular dependency
         import keylime.models.verifier as verifier_models  # pylint: disable=import-outside-toplevel
+        from keylime import keylime_logging  # pylint: disable=import-outside-toplevel
 
-        return verifier_models.Attestation.get_latest(self.agent_id)
+        logger = keylime_logging.init_logging("verifier")
+        attestation = verifier_models.Attestation.get_latest(self.agent_id)
+
+        if attestation:
+            logger.debug("DEBUG: latest_attestation loaded for agent %s: index=%s, challenges_expire_at=%s",
+                        self.agent_id, attestation.index, attestation.challenges_expire_at)
+
+        return attestation

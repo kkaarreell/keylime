@@ -250,6 +250,10 @@ class Attestation(PersistableModel):
         return output
 
     def commit_changes(self, session=None, persist=True):
+        # Debug: Check challenges_expire_at before committing
+        logger.debug("DEBUG: commit_changes called for attestation %s/%s, challenges_expire_at=%s",
+                    self.agent_id, self.index, self.challenges_expire_at)
+
         # Catch situation where multiple requests to create an attestation are received simultaneously
         if persist and self.stage == "awaiting_evidence":
             last_attestation = Attestation.get_latest(self.agent_id)
