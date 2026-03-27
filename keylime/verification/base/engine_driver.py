@@ -103,9 +103,13 @@ class EngineDriver:
         self._attestation = attestation
 
     def process_capabilities(self) -> "EngineDriver":
+        from keylime import keylime_logging  # pylint: disable=import-outside-toplevel
+        logger = keylime_logging.init_logging("verifier")
+
         if not self.attestation.changes_valid:
             return self
 
+        logger.debug("DEBUG: EngineDriver.process_capabilities() - before initialise_parameters()")
         self.attestation.initialise_parameters()  # type: ignore[no-untyped-call]
 
         evidence_requested: list[Any] = []
@@ -116,9 +120,14 @@ class EngineDriver:
             if mutators:
                 engines_to_activate.update(mutators)
 
+        logger.debug("DEBUG: EngineDriver.process_capabilities() - engines_to_activate=%s", engines_to_activate)
+
         for engine in engines_to_activate:
+            logger.debug("DEBUG: Calling %s.process_capabilities()", engine.__name__)
             evidence_snapshot = evidence_requested.copy()
             engine(self.attestation).process_capabilities(evidence_requested)  # type: ignore[no-untyped-call, attr-defined]
+            logger.debug("DEBUG: After %s.process_capabilities(), evidence_requested has %d items",
+                        engine.__name__, len(evidence_requested))
 
             if self.attestation.get_errors():  # type: ignore[no-untyped-call]
                 return self
@@ -129,9 +138,22 @@ class EngineDriver:
                     f"'evidence_requested' list"
                 )
 
+        logger.debug("DEBUG: Before clear/update - attestation.evidence has %d items",
+                    len(list(self.attestation.evidence)))  # type: ignore[attr-defined]
+        logger.debug("DEBUG: evidence_requested has %d items", len(evidence_requested))
+        for i, item in enumerate(evidence_requested):
+            logger.debug("DEBUG: evidence_requested[%d]: class=%s, type=%s, chosen_parameters=%s",
+                        i, item.evidence_class, item.evidence_type, item.chosen_parameters)
+            if hasattr(item.chosen_parameters, 'challenge'):
+                logger.debug("DEBUG:   -> challenge=%s", item.chosen_parameters.challenge)
+
         # TODO: finalise evidence requested
         self.attestation.evidence.clear()  # type: ignore[attr-defined]
         self.attestation.evidence.update(evidence_requested)  # type: ignore[attr-defined]
+
+        logger.debug("DEBUG: After clear/update - attestation.evidence has %d items",
+                    len(list(self.attestation.evidence)))  # type: ignore[attr-defined]
+
         self.attestation.validate_parameters()  # type: ignore[no-untyped-call]
 
         return self
