@@ -13,9 +13,9 @@ class VerifierAgent(PersistableModel):
         cls._id("agent_id", String(80))
 
         # Associations
-        cls._belongs_to("ima_policy", verifier_models.IMAPolicy)
+        cls._belongs_to("ima_policy", verifier_models.IMAPolicy, preload=False)
         cls._field("ima_policy_id", Integer, refers_to="ima_policy.id")  # pylint: disable=unexpected-keyword-arg
-        cls._belongs_to("mb_policy", verifier_models.MBPolicy)
+        cls._belongs_to("mb_policy", verifier_models.MBPolicy, preload=False)
         cls._field("mb_policy_id", Integer, refers_to="mb_policy.id")  # pylint: disable=unexpected-keyword-arg
         cls._has_many("attestations", verifier_models.Attestation, preload=False)
 
