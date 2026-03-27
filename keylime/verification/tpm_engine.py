@@ -113,22 +113,32 @@ class TPMEngine(VerificationEngine):
                     item.capabilities._add_error("formats", "is required for ima_log evidence")
 
     def _select_tpm_quote_item(self) -> Any:
+        logger.debug("DEBUG: _select_tpm_quote_item() called")
+        logger.debug("DEBUG: expects_tpm_quote=%s", self.expects_tpm_quote)
+
         if not self.expects_tpm_quote:
+            logger.debug("DEBUG: expects_tpm_quote is False, returning None")
             return None
 
         tpm_quote_items = self.attestation.evidence.view().filter(  # type: ignore[attr-defined]
             evidence_class="certification", evidence_type="tpm_quote"
         )
 
+        logger.debug("DEBUG: tpm_quote_items.result()=%s", tpm_quote_items.result())
+
         if not tpm_quote_items.result():
             # pylint: disable=protected-access
+            logger.debug("DEBUG: No tpm_quote items found, adding error")
             self.attestation._add_error(
                 "evidence", "must contain a certification item of type 'tpm_quote' per agent policy"
             )
             return None
 
+        logger.debug("DEBUG: Accessing agent.accept_tpm_signing_algs")
         allowable_sig_schemes = self.attestation.agent.accept_tpm_signing_algs
+        logger.debug("DEBUG: allowable_sig_schemes=%s", allowable_sig_schemes)
         allowable_hash_algs = self.attestation.agent.accept_tpm_hash_algs
+        logger.debug("DEBUG: allowable_hash_algs=%s", allowable_hash_algs)
 
         tpm_quote_items = (
             tpm_quote_items.filter(lambda item: item.capabilities.component_version == "2.0")
@@ -916,7 +926,12 @@ class TPMEngine(VerificationEngine):
     @property
     def required_pcr_nums(self) -> list[int]:
         # Get PCRs with list of allowable values in tpm_policy
-        pcrs = {int(num) for num, allowed_vals in self.agent.tpm_policy.items() if num.isdigit() and allowed_vals}
+        logger.debug("DEBUG: required_pcr_nums - accessing agent.tpm_policy")
+        tpm_policy = self.agent.tpm_policy
+        logger.debug("DEBUG: agent.tpm_policy=%s (type=%s)", tpm_policy, type(tpm_policy))
+
+        pcrs = {int(num) for num, allowed_vals in tpm_policy.items() if num.isdigit() and allowed_vals} if tpm_policy else set()
+        logger.debug("DEBUG: PCRs from tpm_policy=%s", pcrs)
 
         # Add UEFI log PCRs
         if self.expects_uefi_log:
@@ -926,6 +941,7 @@ class TPMEngine(VerificationEngine):
         if self.expects_ima_log:
             pcrs.add(config.IMA_PCR)
 
+        logger.debug("DEBUG: Final required_pcr_nums=%s", sorted(list(pcrs)))
         return sorted(list(pcrs))
 
     @property
