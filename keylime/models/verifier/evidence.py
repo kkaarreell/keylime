@@ -78,12 +78,21 @@ class EvidenceItem(PersistableModel):
         if self.evidence_class != "certification":  # pylint: disable=comparison-with-callable  # ORM framework pattern
             raise ValueError("challenge can only be generated for EvidenceItem with evidence_class 'certification'")
 
+        logger.debug("DEBUG: EvidenceItem.generate_challenge() called for agent %s, attestation %s",
+                    self.agent_id, self.attestation_index)
+        logger.debug("DEBUG: Before: chosen_parameters=%s", self.chosen_parameters)
+
         # pylint: disable=comparison-with-callable,attribute-defined-outside-init
         if not isinstance(self.chosen_parameters, CertificationParameters):
+            logger.debug("DEBUG: Creating new CertificationParameters object")
             self.chosen_parameters = CertificationParameters.empty()
         # pylint: enable=comparison-with-callable,attribute-defined-outside-init
 
+        logger.debug("DEBUG: Calling chosen_parameters.generate_challenge()")
         self.chosen_parameters.generate_challenge(bit_length)
+        logger.debug("DEBUG: After generate_challenge: chosen_parameters=%s", self.chosen_parameters)
+        logger.debug("DEBUG: challenge value=%s", self.chosen_parameters.challenge)
+
         self.refresh_metadata()
 
     def receive_evidence(self, data):
@@ -382,8 +391,10 @@ class CertificationParameters(ChosenParameters):
         # fields can vary by evidence_type (even when the evidence_types belong to the same evidence_class)
 
     def generate_challenge(self, bit_length):
+        logger.debug("DEBUG: CertificationParameters.generate_challenge() called with bit_length=%s", bit_length)
         # self.challenge = Nonce.generate(bit_length)
         self.challenge = bytes.fromhex("49beed365aac777dae23564f5ad0ec")
+        logger.debug("DEBUG: Set challenge to %s", self.challenge)
 
     def render(self, only=None):
         output = super().render(only)

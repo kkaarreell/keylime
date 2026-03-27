@@ -436,7 +436,13 @@ class TPMEngine(VerificationEngine):
         if not selected_item:
             return
 
+        logger.debug("DEBUG: About to call generate_challenge() for agent %s, selected_item=%s",
+                    self.attestation.agent_id, selected_item)
         selected_item.generate_challenge(128)
+        logger.debug("DEBUG: After generate_challenge(), selected_item.chosen_parameters=%s",
+                    selected_item.chosen_parameters)
+        if selected_item.chosen_parameters:
+            logger.debug("DEBUG: chosen_parameters.challenge=%s", selected_item.chosen_parameters.challenge)
 
         self._select_certification_key(selected_item)
         self._select_subjects(selected_item)
