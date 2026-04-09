@@ -883,27 +883,21 @@ class TPMEngine(VerificationEngine):
 
     @property
     def ima_policy(self) -> Any:
-        # If using a fresh agent, bypass SQLAlchemy's identity map cache by querying the database directly
+        # If using a fresh agent, bypass SQLAlchemy's identity map cache by expunging and reloading the policy
         # This is necessary because policy updates use DELETE-CREATE which may reuse the same policy ID,
         # causing the identity map to return stale cached policy objects
         if hasattr(self, "_fresh_agent") and self._fresh_agent and self._fresh_agent.ima_policy_id:  # type: ignore[attr-defined]
-            # pylint: disable=import-outside-toplevel
-            import json
+            # Use the ORM relationship to get the policy, but ensure we get a fresh copy from the database
+            from keylime.models.base import db_manager  # pylint: disable=import-outside-toplevel
+            from keylime.models.verifier import IMAPolicy  # pylint: disable=import-outside-toplevel
 
-            from sqlalchemy import text
-
-            from keylime.models.base import db_manager
-
-            # Query the database directly using raw SQL to completely bypass ORM caching
             with db_manager.session_context() as session:
-                result = session.execute(
-                    text("SELECT ima_policy FROM allowlists WHERE id = :policy_id"),
-                    {"policy_id": self._fresh_agent.ima_policy_id},  # type: ignore[attr-defined]
-                ).fetchone()
-
-                if result and result[0]:
-                    # Parse the JSON policy stored in the database
-                    return json.loads(result[0])
+                # Expire all cached objects in the session to force reload from database
+                session.expire_all()
+                # Fetch the policy using the ORM
+                policy = IMAPolicy.get(self._fresh_agent.ima_policy_id, session=session)  # type: ignore[attr-defined]
+                if policy and policy.ima_policy:
+                    return policy.ima_policy
 
         return self.agent.ima_policy.ima_policy
 
