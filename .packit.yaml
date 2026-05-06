@@ -20,4 +20,3 @@ jobs:
     test:
       tmt:
         name: "/packit-ci/fast-e2e"
--
