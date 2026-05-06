@@ -1,0 +1,16 @@
+#testing-farm:centos-stream-10-x86_64:fast
+#
+on:
+  workflow_run:
+    workflows: ["testing-farm:centos-stream-10-x86_64:fast"]
+    types: [completed]
+
+jobs:
+  on-success:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Full Test
+        run: gh pr comment ${{ github.event.pull_request.number }} --body "/packit test --identifier full"
+        env:
+          GITHUB_TOKEN: ${{ secrets.KEYLIME_REPO_COMMENT_TOKEN }}
