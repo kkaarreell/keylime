@@ -1,6 +1,14 @@
 name: PR code coverage measurement on codecov.io
 
-on: [pull_request]
+on:
+  check_run:
+    types: [completed]
+
+jobs:
+  build:
+    # Only run if the "full" testing-farm job finished successfully
+    if: >
+      github.event.check_run.name == 'testing-farm:centos-stream-10-x86_64:full'
 
 jobs:
   build:
