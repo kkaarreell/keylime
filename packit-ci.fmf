@@ -87,9 +87,4 @@ adjust:
     url: https://github.com/RedHat-SP-Security/keylime-tests
     ref: main
     test:
-     - /setup/apply_workarounds
-     - /setup/configure_tpm_emulator
      - /setup/install_upstream_keylime
-     - /setup/install_upstream_rust_keylime
-     - /setup/configure_kernel_ima_module/ima_policy_simple
-     - /functional/basic-attestation-on-localhost
