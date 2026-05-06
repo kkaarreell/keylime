@@ -3,10 +3,9 @@ jobs:
   trigger: pull_request
   manual_trigger: true
   identifier: full
-  metadata:
-    targets:
+  targets:
     - fedora-stable
-    skip_build: true
+  skip_build: true
   tf_extra_params:
     test:
       tmt:
@@ -14,10 +13,9 @@ jobs:
 - job: tests
   trigger: pull_request
   identifier: fast
-  metadata:
-    targets:
+  targets:
     - fedora-latest
-    skip_build: true
+  skip_build: true
   tf_extra_params:
     test:
       tmt:
