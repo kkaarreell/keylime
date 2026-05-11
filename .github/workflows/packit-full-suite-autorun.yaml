@@ -20,7 +20,8 @@ jobs:
       contains(github.event.check_run.name, ':fast')
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Full Test
+      - name: Get PR current head SHA
+        id: pr-head
         run: |
           # Use the input if manual, otherwise use the payload array
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -28,7 +29,23 @@ jobs:
           else
             PR_NUMBER="${{ github.event.check_run.pull_requests[0].number }}"
           fi
-          
+
+          CURRENT_HEAD=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid' --repo ${{ github.repository }})
+          echo "current_head=$CURRENT_HEAD" >> $GITHUB_OUTPUT
+          echo "tested_head=${{ github.event.check_run.head_sha }}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Full Test
+        if: steps.pr-head.outputs.current_head == steps.pr-head.outputs.tested_head
+        run: |
+          # Use the input if manual, otherwise use the payload array
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.check_run.pull_requests[0].number }}"
+          fi
+
           gh pr comment "$PR_NUMBER" --body "/packit test --identifier full" --repo ${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.KEYLIME_REPO_COMMENT_TOKEN }}
