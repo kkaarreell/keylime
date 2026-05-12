@@ -48,4 +48,5 @@ jobs:
 
           gh pr comment "$PR_NUMBER" --body "/packit test --identifier full" --repo ${{ github.repository }}
         env:
-          GITHUB_TOKEN: ${{ secrets.KEYLIME_REPO_COMMENT_TOKEN }}
+          #GITHUB_TOKEN: ${{ secrets.KEYLIME_REPO_COMMENT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
