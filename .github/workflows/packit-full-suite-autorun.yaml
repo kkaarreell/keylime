@@ -18,6 +18,9 @@ jobs:
       github.event.check_run.conclusion == 'success' &&
       contains(github.event.check_run.name, 'testing-farm:') &&
       contains(github.event.check_run.name, ':fast')
+    permissions:
+      pull-requests: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Get PR current head SHA
