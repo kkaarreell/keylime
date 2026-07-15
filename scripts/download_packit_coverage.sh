@@ -30,7 +30,7 @@ MAX_DURATION="${MAX_DURATION:-6000}"  # 100 minutes
 SLEEP_DELAY="${SLEEP_DELAY:-120}"
 
 # github user/project we are going to work with
-PROJECT="keylime/keylime"
+PROJECT="kkaarreell/keylime"
 #PROJECT="keylimecov/keylime"
 
 # TF_JOB_DESC points to a Testing farm job that does code coverage measurement and 
