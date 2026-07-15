@@ -4,7 +4,7 @@ jobs:
   manual_trigger: true
   identifier: full
   targets:
-    - centos-stream-10
+    - fedora-43
   skip_build: true
   tf_extra_params:
     test:
